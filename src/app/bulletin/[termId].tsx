@@ -79,7 +79,6 @@ export default function ReportCardScreen() {
                   <Text variant="caption">
                     coef. {s.coefficient}
                     {s.class_average != null ? ` · moy. classe ${score(s.class_average)}` : ''}
-                    {s.teacher ? ` · ${s.teacher}` : ''}
                   </Text>
                   {!!s.appreciation && <Text variant="small">« {s.appreciation} »</Text>}
                 </View>
