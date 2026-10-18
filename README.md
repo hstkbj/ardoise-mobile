@@ -9,7 +9,7 @@ et suivent chacun de leurs enfants.
 | Notes | Moyenne générale, **bulletins** (disponible / à venir / retenu pour impayés), moyennes par matière, toutes les notes | `GET /report-cards/{élève}`, `…/pdf` |
 | Absences | Absences et retards, justification avec motif et pièce jointe (photo ou PDF) | `POST /parent/attendance/{id}/justify` |
 | Paiements | Reste à payer, échéances, **paiement** (FedaPay ou demande à la comptabilité), reçus PDF | `POST /parent/payments/{id}/checkout`, `…/verify`, `GET /payments/{id}/receipt` |
-| Plus | Notifications, devoirs (cocher fait), emploi du temps, annonces, documents (+ demande au secrétariat), profil, déconnexion | voir `resources/openapi/parent.yaml` |
+| Plus | Notifications (et notifications push sur le téléphone), devoirs (cocher fait), emploi du temps, annonces, documents (+ demande au secrétariat), profil, déconnexion | voir `resources/openapi/parent.yaml` |
 
 Les modules absents du plan de l'école (`features` de `/auth/me`) sont masqués. Avec plusieurs
 enfants, un sélecteur en haut de chaque écran change l'enfant affiché partout.
@@ -54,6 +54,36 @@ src/components/       Logo, icônes, Text, Screen, cartes, boutons, tuiles, grap
 src/providers/        session (jeton dans le trousseau du téléphone) et enfants (/parent/children)
 src/lib/              client API, types (miroir de l'OpenAPI), formats fr-FR, téléchargement + partage
 ```
+
+## Notifications push
+
+Le parent reçoit une notification sur son téléphone, **même application fermée**, quand l'école valide une note
+(« Awa · Mathématiques — Interrogation 2 : 14/20 »), signale une absence ou un retard, publie un bulletin, un devoir
+ou une annonce, ou encaisse un paiement. Toucher la notification ouvre l'écran concerné, sur le bon enfant.
+L'école choisit les événements dans **Paramètres › Destinataires** (canal « Push »).
+
+Fonctionnement : à la connexion, l'application demande l'autorisation, obtient le jeton Expo du téléphone
+(`src/lib/push.ts`) et l'envoie au serveur (`POST /parent/push-token`) ; à la déconnexion il est retiré. Le serveur
+envoie par le service gratuit d'Expo, qui relaie vers Firebase (Android) et Apple (iOS).
+
+**Mise en place (une seule fois)**
+
+1. Projet Expo : `npm install -g eas-cli && eas login && eas init` — ajoute `extra.eas.projectId` dans `app.json`
+   (nécessaire pour obtenir le jeton). Pensez à committer `app.json`.
+2. Android — Firebase (gratuit) :
+   - [console.firebase.google.com](https://console.firebase.google.com) → créer un projet → ajouter une application
+     Android avec le package `app.ardoise.parents` → télécharger `google-services.json` et le placer à la racine
+     du projet (ou, sur EAS : `eas env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json`) ;
+   - Firebase → Paramètres du projet → Comptes de service → « Générer une nouvelle clé privée » (fichier JSON) ;
+   - `eas credentials` → Android → production → Google Service Account → « Manage your Google Service Account Key
+     for Push Notifications (FCM V1) » → envoyer ce fichier JSON.
+3. iOS : compte Apple Developer ; `eas build -p ios` propose de créer la clé push (APNs) automatiquement.
+4. Serveur : rien à configurer, mais le worker doit tourner (`php artisan queue:work`).
+
+**Tester** : Expo Go ne reçoit pas les notifications push sur Android. Construisez une version de test,
+`eas build --profile preview --platform android`, installez l'APK, connectez-vous avec un code parent, puis validez
+une évaluation de son enfant depuis l'espace enseignant. Outil pratique : [expo.dev/notifications](https://expo.dev/notifications)
+pour envoyer un message à un jeton `ExponentPushToken[…]`.
 
 ## Paiement en ligne
 

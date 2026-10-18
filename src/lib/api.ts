@@ -80,6 +80,10 @@ export const api = {
     request<{ data: Me; token: string }>('/parent/login', { method: 'POST', json: { code, device_name: deviceName } }),
   me: () => data(request<{ data: Me }>('/auth/me')),
   logout: () => request('/auth/logout', { method: 'POST' }),
+  /** POST /parent/push-token — téléphone qui reçoit les notifications push */
+  registerPushToken: (token: string, platform: string, deviceName?: string) =>
+    request('/parent/push-token', { method: 'POST', json: { token, platform, device_name: deviceName } }),
+  deletePushToken: (token: string) => request('/parent/push-token', { method: 'DELETE', json: { token } }),
 
   children: () => data(request<{ data: Child[] }>('/parent/children')),
   reportCard: (studentId: number, termId: number) => data(request<{ data: ReportCard }>(`/report-cards/${studentId}?term_id=${termId}`)),

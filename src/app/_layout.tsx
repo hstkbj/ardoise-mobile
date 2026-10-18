@@ -1,13 +1,15 @@
 import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold, useFonts } from '@expo-google-fonts/instrument-sans';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { colors, fonts } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/providers/auth';
-import { ChildrenProvider } from '@/providers/children';
+import { routeFor } from '@/lib/push';
+import { ChildrenProvider, useChildren } from '@/providers/children';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -46,7 +48,9 @@ function RootNavigator() {
   if (!ready) return null;
 
   return (
-    <Stack
+    <>
+      {user && <PushHandler />}
+      <Stack
       screenOptions={{
         headerTintColor: colors.brand600,
         headerTitleStyle: { fontFamily: fonts.semibold, color: colors.ink },
@@ -70,6 +74,39 @@ function RootNavigator() {
         <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
         <Stack.Screen name="profil" options={{ title: 'Mon profil' }} />
       </Stack.Protected>
-    </Stack>
+      </Stack>
+    </>
   );
+}
+
+/**
+ * Notification push touchée (application ouverte, en arrière-plan ou fermée) : on affiche l'enfant
+ * concerné puis l'écran correspondant. Notification reçue application ouverte : les données sont rafraîchies.
+ */
+function PushHandler() {
+  const router = useRouter();
+  const response = Notifications.useLastNotificationResponse();
+  const { selectChild } = useChildren();
+
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(() => {
+      void queryClient.invalidateQueries({ queryKey: ['children'] });
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    const data = response.notification.request.content.data ?? {};
+    const studentId = Number(data.student_id);
+    // L'enfant est retenu même si la liste n'est pas encore chargée (démarrage par la notification)
+    if (studentId) selectChild(studentId);
+    void queryClient.invalidateQueries({ queryKey: ['children'] });
+    const target = routeFor(data.type);
+    if (target) router.push(target as never);
+    Notifications.clearLastNotificationResponse();
+  }, [response, selectChild, router]);
+
+  return null;
 }

@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { Platform } from 'react-native';
 
 import { api, setApiToken, setUnauthorizedHandler } from '@/lib/api';
+import { registerForPush, unregisterPush } from '@/lib/push';
 import { readToken, writeToken } from '@/lib/storage';
 import type { Feature, Me } from '@/lib/types';
 
@@ -54,6 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => setUnauthorizedHandler(() => void clear()), [clear]);
 
+  // Connecté : ce téléphone reçoit les notifications push (autorisation demandée la première fois)
+  const userId = user?.id;
+  useEffect(() => {
+    if (userId) void registerForPush();
+  }, [userId]);
+
   const login = useCallback(async (code: string) => {
     const device = Platform.select({ ios: 'iPhone', android: 'Android', default: 'Navigateur' });
     const out = await api.login(code, `Application Ardoise (${device})`);
@@ -63,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    await unregisterPush();
     try {
       await api.logout();
     } catch {

@@ -7,12 +7,12 @@ import { Text } from '@/components/Text';
 import { Button, EmptyState, ErrorState, Loading } from '@/components/ui';
 import { colors, space } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { routeFor } from '@/lib/push';
 import { relative } from '@/lib/format';
 import type { AppNotification } from '@/lib/types';
 
 const ICONS: Record<string, IconName> = { grade: 'pencil', attendance: 'check-circle', payment: 'wallet', report_card: 'file', announcement: 'megaphone', homework: 'list' };
 /** Lien du site → écran de l'application */
-const ROUTES: Record<string, string> = { grade: '/notes', report_card: '/notes', attendance: '/absences', payment: '/paiements', homework: '/devoirs', announcement: '/annonces' };
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function NotificationsScreen() {
 
   function open(n: AppNotification) {
     if (!n.read) void api.readNotification(n.id).then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }));
-    const target = ROUTES[n.type];
+    const target = routeFor(n.type);
     if (target) router.push(target as never);
   }
 

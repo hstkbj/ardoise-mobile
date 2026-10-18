@@ -31,3 +31,17 @@ export async function writeToken(token: string | null): Promise<void> {
   if (token) await SecureStore.setItemAsync(KEY, token);
   else await SecureStore.deleteItemAsync(KEY);
 }
+
+/** Jeton push Expo envoyé au serveur : gardé pour le retirer à la déconnexion. */
+const PUSH_KEY = 'ardoise.push';
+
+export async function readPushToken(): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  return SecureStore.getItemAsync(PUSH_KEY);
+}
+
+export async function writePushToken(token: string | null): Promise<void> {
+  if (Platform.OS === 'web') return;
+  if (token) await SecureStore.setItemAsync(PUSH_KEY, token);
+  else await SecureStore.deleteItemAsync(PUSH_KEY);
+}
