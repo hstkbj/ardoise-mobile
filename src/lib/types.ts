@@ -107,7 +107,19 @@ export interface ReportCard {
   status: string;
   student: { id: number; full_name: string; matricule: string; class_name: string | null };
   show_rank: boolean;
-  subjects: { name: string; teacher: string | null; coefficient: number; average: number | null; class_average: number | null; appreciation: string | null }[];
+  /** Détail par matière : interros = notes d'interrogation sur 20, devoirs = notes de devoir sur 20, rank = rang dans la matière */
+  subjects: {
+    name: string;
+    teacher: string | null;
+    coefficient: number;
+    interros?: number[];
+    interro_average?: number | null;
+    devoirs?: number[];
+    average: number | null;
+    rank?: number | null;
+    class_average: number | null;
+    appreciation: string | null;
+  }[];
   general_average: number | null;
   class_average: number | null;
   rank: number | null;

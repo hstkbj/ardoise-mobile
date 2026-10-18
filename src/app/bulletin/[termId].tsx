@@ -78,8 +78,14 @@ export default function ReportCardScreen() {
                   </View>
                   <Text variant="caption">
                     coef. {s.coefficient}
-                    {s.class_average != null ? ` · moy. classe ${score(s.class_average)}` : ''}
+                    {s.average != null ? ` · moy. × coef. ${score(s.average * s.coefficient)}` : ''}
+                    {card.show_rank && s.rank != null ? ` · ${s.rank}${s.rank === 1 ? 'er' : 'e'}` : ''}
                   </Text>
+                  <Text variant="small">
+                    Interrogations : {s.interros?.length ? s.interros.map((v, n) => `I${n + 1} ${score(v)}`).join(' · ') : '—'}
+                    {s.interro_average != null ? ` → moy. ${score(s.interro_average)}` : ''}
+                  </Text>
+                  <Text variant="small">Devoirs : {s.devoirs?.length ? s.devoirs.map((v, n) => `D${n + 1} ${score(v)}`).join(' · ') : '—'}</Text>
                   {!!s.appreciation && <Text variant="small">« {s.appreciation} »</Text>}
                 </View>
               </View>
