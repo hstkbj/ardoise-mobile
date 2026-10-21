@@ -1,6 +1,6 @@
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsModule from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { colors } from '@/constants/theme';
@@ -12,13 +12,39 @@ import { readPushToken, writePushToken } from '@/lib/storage';
  *
  * Le téléphone obtient un jeton Expo, l'envoie au serveur (POST /parent/push-token) ; le serveur
  * passe par le service d'Expo, qui relaie vers Firebase (Android) et Apple (iOS) : la notification
- * s'affiche même application fermée. Ne fonctionne pas dans Expo Go : il faut une version EAS.
+ * s'affiche même application fermée.
+ *
+ * Expo Go (SDK 53+) n'embarque plus le module natif des notifications push : le simple import
+ * d'expo-notifications y fait planter l'application. Le module n'est donc chargé que dans une
+ * vraie version (build EAS, APK de test) ; dans Expo Go et sur le web, l'application fonctionne sans push.
  */
 
-// Application ouverte : la notification s'affiche quand même en bannière
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
-});
+/** true dans l'application Expo Go */
+export const IN_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let loaded: typeof NotificationsModule | null | undefined;
+
+/** Module expo-notifications, ou null quand le push n'est pas disponible (Expo Go, web). */
+export function notifications(): typeof NotificationsModule | null {
+  if (loaded !== undefined) return loaded;
+  if (Platform.OS === 'web' || IN_EXPO_GO) return (loaded = null);
+
+  try {
+    // Chargement à la demande : voir ci-dessus
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const module: typeof NotificationsModule = require('expo-notifications');
+    // Application ouverte : la notification s'affiche quand même en bannière
+    module.setNotificationHandler({
+      handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+    });
+    loaded = module;
+  } catch (e) {
+    console.warn('Notifications push indisponibles :', (e as Error).message);
+    loaded = null;
+  }
+
+  return loaded;
+}
 
 /** Écran à ouvrir selon le type de notification (même logique que l'écran Notifications). */
 const ROUTES: Record<string, string> = {
@@ -36,7 +62,8 @@ export function routeFor(type: unknown): string | null {
 
 /** Demande l'autorisation, récupère le jeton du téléphone et l'enregistre côté serveur. Sans effet sur le web ou un simulateur. */
 export async function registerForPush(): Promise<string | null> {
-  if (Platform.OS === 'web' || !Device.isDevice) return null;
+  const Notifications = notifications();
+  if (!Notifications || !Device.isDevice) return null;
 
   try {
     if (Platform.OS === 'android') {

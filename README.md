@@ -80,7 +80,8 @@ envoie par le service gratuit d'Expo, qui relaie vers Firebase (Android) et Appl
 3. iOS : compte Apple Developer ; `eas build -p ios` propose de créer la clé push (APNs) automatiquement.
 4. Serveur : rien à configurer, mais le worker doit tourner (`php artisan queue:work`).
 
-**Tester** : Expo Go ne reçoit pas les notifications push sur Android. Construisez une version de test,
+**Tester** : Expo Go n'inclut pas le module des notifications push (SDK 53+) : l'application y fonctionne
+normalement, mais sans push (le module n'est chargé que dans une vraie version, voir `src/lib/push.ts`). Construisez une version de test,
 `eas build --profile preview --platform android`, installez l'APK, connectez-vous avec un code parent, puis validez
 une évaluation de son enfant depuis l'espace enseignant. Outil pratique : [expo.dev/notifications](https://expo.dev/notifications)
 pour envoyer un message à un jeton `ExponentPushToken[…]`.

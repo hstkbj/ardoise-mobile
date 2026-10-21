@@ -1,6 +1,6 @@
 import { InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold, useFonts } from '@expo-google-fonts/instrument-sans';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import * as Notifications from 'expo-notifications';
+import type { NotificationResponse } from 'expo-notifications';
 import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 
 import { colors, fonts } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/providers/auth';
-import { routeFor } from '@/lib/push';
+import { notifications, routeFor } from '@/lib/push';
 import { ChildrenProvider, useChildren } from '@/providers/children';
 
 SplashScreen.preventAutoHideAsync();
@@ -85,28 +85,41 @@ function RootNavigator() {
  */
 function PushHandler() {
   const router = useRouter();
-  const response = Notifications.useLastNotificationResponse();
   const { selectChild } = useChildren();
 
   useEffect(() => {
-    const sub = Notifications.addNotificationReceivedListener(() => {
+    const Notifications = notifications();
+    if (!Notifications) return; // Expo Go ou web : pas de push
+
+    const open = (response: NotificationResponse) => {
+      if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+      const data = response.notification.request.content.data ?? {};
+      const studentId = Number(data.student_id);
+      // L'enfant est retenu même si la liste n'est pas encore chargée (démarrage par la notification)
+      if (studentId) selectChild(studentId);
+      void queryClient.invalidateQueries({ queryKey: ['children'] });
+      const target = routeFor(data.type);
+      if (target) router.push(target as never);
+    };
+
+    const received = Notifications.addNotificationReceivedListener(() => {
       void queryClient.invalidateQueries({ queryKey: ['children'] });
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
-    return () => sub.remove();
-  }, []);
+    const tapped = Notifications.addNotificationResponseReceivedListener(open);
 
-  useEffect(() => {
-    if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-    const data = response.notification.request.content.data ?? {};
-    const studentId = Number(data.student_id);
-    // L'enfant est retenu même si la liste n'est pas encore chargée (démarrage par la notification)
-    if (studentId) selectChild(studentId);
-    void queryClient.invalidateQueries({ queryKey: ['children'] });
-    const target = routeFor(data.type);
-    if (target) router.push(target as never);
-    Notifications.clearLastNotificationResponse();
-  }, [response, selectChild, router]);
+    // Application lancée en touchant une notification
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (!response) return;
+      open(response);
+      void Notifications.clearLastNotificationResponseAsync();
+    });
+
+    return () => {
+      received.remove();
+      tapped.remove();
+    };
+  }, [router, selectChild]);
 
   return null;
 }
