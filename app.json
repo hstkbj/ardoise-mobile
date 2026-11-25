@@ -60,6 +60,13 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3cb9b958-e79d-46a0-b571-fc3f6f7d77cd"
+      }
+    },
+    "owner": "holmesdev"
   }
 }
